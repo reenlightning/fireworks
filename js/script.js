@@ -2297,8 +2297,118 @@ function setLoadingStatus(status) {
 }
 
 // CodePen profile header doesn't need audio, just initialize.
+// 显示"新年快乐"粒子效果的函数
+function showHappyNewYear() {
+	// 响应式字体大小：根据舞台宽度的45%来设置字体大小（增大了5%）
+	const fontSize = Math.min(stageW * 0.45, 250); // 最大不超过250px（增大了50px）
+	
+	// 创建临时画布来渲染文本
+	const tempCanvas = document.createElement('canvas');
+	const tempCtx = tempCanvas.getContext('2d');
+	
+	// 设置画布大小，根据字体大小自动调整
+	const text = '新年快乐';
+	
+	// 先测量文本宽度
+	tempCtx.font = `${fontSize}px Arial`;
+	const textWidth = tempCtx.measureText(text).width;
+	const textHeight = fontSize * 1.2; // 估算文本高度
+	
+	// 设置画布大小，为文本添加适当的边距
+	const padding = 20;
+	tempCanvas.width = textWidth + padding * 2;
+	tempCanvas.height = textHeight + padding * 2;
+	
+	// 重新设置字体（确保使用正确的画布大小）
+	tempCtx.fillStyle = '#ffffff';
+	tempCtx.font = `${fontSize}px Arial`;
+	tempCtx.textAlign = 'center';
+	tempCtx.textBaseline = 'middle';
+	
+	// 渲染"新年快乐"文本
+	tempCtx.fillText(text, tempCanvas.width / 2, tempCanvas.height / 2);
+	
+	// 获取像素数据
+	const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+	const data = imageData.data;
+	
+	// 在主舞台中心显示文字
+	const centerX = stageW / 2;
+	const centerY = stageH / 2;
+	const textOffsetX = (tempCanvas.width / 2) * -1;
+	const textOffsetY = (tempCanvas.height / 2) * -1;
+	
+	// 遍历像素数据，创建粒子
+	const particleSpacing = 4; // 粒子间距，越小越密集
+	for (let y = 0; y < tempCanvas.height; y += particleSpacing) {
+		for (let x = 0; x < tempCanvas.width; x += particleSpacing) {
+			const index = (y * tempCanvas.width + x) * 4;
+			const alpha = data[index + 3];
+			
+			// 如果像素不透明，创建粒子
+			if (alpha > 128) {
+				const particleX = centerX + textOffsetX + x;
+				const particleY = centerY + textOffsetY + y;
+				
+				// 创建彩色粒子，主要使用金色和红色营造节日氛围
+				const colors = [COLOR.Gold, COLOR.Red, COLOR.White, COLOR.Blue, COLOR.Purple];
+				const randomColor = colors[Math.floor(Math.random() * colors.length)];
+				
+				// 使用Star类创建粒子
+				const star = Star.add(
+					particleX,
+					particleY,
+					randomColor,
+					0, // 初始角度为0，不立即散开
+					0.2, // 初始速度很小
+					2500 + Math.random() * 1500, // 适当缩短生命周期
+					0, // 初始X速度偏移为0
+					0  // 初始Y速度偏移为0
+				);
+				
+				// 添加延迟，让粒子在一段时间后再开始运动
+				const delay = Math.random() * 800; // 随机延迟0-0.8秒（缩短了延迟时间）
+				setTimeout(() => {
+					// 设置随机角度和速度，让粒子更快地散开
+					star.speedX = (Math.random() - 0.5) * 4; // 增加了散开速度
+					star.speedY = (Math.random() - 0.5) * 4; // 增加了散开速度
+				}, delay);
+			}
+		}
+	}
+}
+
+// 定期显示新年快乐粒子效果
+function scheduleHappyNewYear() {
+	// 确保在非暂停状态下显示
+	if (!store.state.paused) {
+		showHappyNewYear();
+	}
+	
+	// 固定延迟10秒后再次显示
+	const delay = 10000;
+	setTimeout(scheduleHappyNewYear, delay);
+}
+
+// 在初始化后显示新年快乐粒子效果
+function checkAndShowHappyNewYear() {
+	// 延迟10秒后开始第一次显示
+	setTimeout(() => {
+		scheduleHappyNewYear();
+	}, 7000);
+}
+
+// 监听商店状态变化
+store.subscribe((state, prevState) => {
+	// 如果从暂停状态切换到非暂停状态，重新开始显示效果
+	if (!state.paused && prevState.paused) {
+		checkAndShowHappyNewYear();
+	}
+});
+
 if (IS_HEADER) {
 	init();
+	checkAndShowHappyNewYear();
 } else {
 	// Allow status to render, then preload assets and start app.
 	setLoadingStatus('正在点燃导火线');
@@ -2313,5 +2423,6 @@ if (IS_HEADER) {
 				return Promise.reject(reason);
 			}
 		);
+		setTimeout(checkAndShowHappyNewYear, 2000); // 延迟2秒检查是否显示
 	}, 0);
 }
